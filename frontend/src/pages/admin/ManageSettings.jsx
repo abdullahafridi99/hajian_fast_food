@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useSettings } from '../../context/SettingsContext';
-import { FiCheckCircle, FiSettings, FiPhone, FiInfo } from 'react-icons/fi';
+import { FiCheckCircle, FiSettings, FiPhone, FiInfo, FiLock } from 'react-icons/fi';
 import { FaFacebook, FaInstagram, FaTiktok, FaWhatsapp } from 'react-icons/fa';
 
 const ManageSettings = () => {
@@ -10,6 +10,14 @@ const ManageSettings = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  // Password Change States
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwSubmitting, setPwSubmitting] = useState(false);
+  const [pwSuccess, setPwSuccess] = useState(false);
+  const [pwError, setPwError] = useState('');
 
   // Setting States
   const [restaurantName, setRestaurantName] = useState('HAJIAN FOODS');
@@ -86,6 +94,44 @@ const ManageSettings = () => {
       setError('Failed to save settings. Please try again.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPwSuccess(false);
+    setPwError('');
+
+    if (newPassword !== confirmPassword) {
+      setPwError('New passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPwError('New password must be at least 6 characters long');
+      return;
+    }
+
+    setPwSubmitting(true);
+    try {
+      const response = await axios.put('/api/auth/change-password', {
+        currentPassword,
+        newPassword,
+      });
+
+      if (response.data.success) {
+        setPwSuccess(true);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (err) {
+      console.error('Error changing password:', err);
+      setPwError(
+        err.response?.data?.message || 'Failed to change password. Please try again.'
+      );
+    } finally {
+      setPwSubmitting(false);
     }
   };
 
@@ -323,6 +369,75 @@ const ManageSettings = () => {
         </button>
 
       </form>
+
+      {/* Change Password Form Card */}
+      <section className="bg-white rounded-3xl border border-light-gray/20 p-8 shadow-premium space-y-6 max-w-2xl text-xs font-medium text-gray-600 mt-12">
+        <h3 className="text-lg font-bold text-dark border-b border-light-gray/10 pb-3 flex items-center space-x-2">
+          <FiLock className="text-primary w-5 h-5" />
+          <span>Change Admin Password</span>
+        </h3>
+
+        {pwSuccess && (
+          <div className="bg-green-50 text-green-800 p-4 rounded-2xl border border-green-200 text-xs font-bold flex items-center space-x-2">
+            <FiCheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+            <span>Password changed successfully!</span>
+          </div>
+        )}
+
+        {pwError && (
+          <div className="bg-red-50 text-red-700 p-4 rounded-2xl border border-red-200 text-xs font-bold">
+            {pwError}
+          </div>
+        )}
+
+        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Current Password</label>
+            <input
+              type="password"
+              placeholder="Enter current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">New Password</label>
+              <input
+                type="password"
+                placeholder="Enter new password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Confirm New Password</label>
+              <input
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark"
+                required
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={pwSubmitting}
+            className="w-full py-4 rounded-xl bg-primary text-white hover:bg-secondary hover:text-dark-darker font-extrabold uppercase text-xs tracking-wider transition-all shadow-md disabled:bg-gray-300"
+          >
+            {pwSubmitting ? 'Updating Password...' : 'Change Password'}
+          </button>
+        </form>
+      </section>
     </div>
   );
 };
