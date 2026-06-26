@@ -40,6 +40,13 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Please fill in all order details and add items to cart' });
   }
 
+  // Validate Pakistani phone number format
+  const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+  const pakPhoneRegex = /^(?:\+92|92|0)?3[0-9]{9}$/;
+  if (!pakPhoneRegex.test(cleanPhone)) {
+    return res.status(400).json({ success: false, message: 'Please provide a valid Pakistani mobile number (e.g. 03001234567 or +923001234567).' });
+  }
+
   try {
     // If digital payment, set paymentStatus to "Pending Verification"
     const paymentStatus = (paymentMethod !== 'Cash on Delivery') ? 'Pending Verification' : 'Pending';

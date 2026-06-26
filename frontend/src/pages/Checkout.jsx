@@ -14,6 +14,7 @@ const Checkout = () => {
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   
   // Payment state
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery');
@@ -69,6 +70,14 @@ const Checkout = () => {
 
     if (cartItems.length === 0) {
       setSubmitError('Your cart is empty.');
+      return;
+    }
+
+    // Validation for Pakistani phone number
+    const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    const pakPhoneRegex = /^(?:\+92|92|0)?3[0-9]{9}$/;
+    if (!pakPhoneRegex.test(cleanPhone)) {
+      setPhoneError('Please enter a valid Pakistani mobile number (e.g. 03001234567 or +923001234567).');
       return;
     }
 
@@ -169,12 +178,22 @@ const Checkout = () => {
                       type="tel"
                       placeholder="e.g. 03001234567"
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all"
+                      onChange={(e) => {
+                        setPhoneNumber(e.target.value);
+                        if (phoneError) setPhoneError('');
+                      }}
+                      className={`w-full pl-12 pr-4 py-3 bg-light border rounded-xl focus:outline-none focus:ring-2 text-sm transition-all ${
+                        phoneError 
+                          ? 'border-red-500 focus:ring-red-200 focus:border-red-500' 
+                          : 'border-light-gray/40 focus:ring-primary/20 focus:border-primary'
+                      }`}
                       required
                     />
                     <FiPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                   </div>
+                  {phoneError && (
+                    <p className="text-red-500 text-xs font-semibold mt-1">{phoneError}</p>
+                  )}
                 </div>
 
                 {/* Address */}

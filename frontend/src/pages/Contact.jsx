@@ -13,9 +13,19 @@ const Contact = () => {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Validation for Pakistani phone number
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+    const pakPhoneRegex = /^(?:\+92|92|0)?3[0-9]{9}$/;
+    if (!pakPhoneRegex.test(cleanPhone)) {
+      setPhoneError('Please enter a valid Pakistani mobile number (e.g. 03001234567 or +923001234567).');
+      return;
+    }
+
     setLoading(true);
     
     // Simulate contact form submission
@@ -26,6 +36,7 @@ const Contact = () => {
       setEmail('');
       setPhone('');
       setMessage('');
+      setPhoneError('');
     }, 1500);
   };
 
@@ -215,10 +226,20 @@ const Contact = () => {
                     type="tel"
                     placeholder="Your phone number"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all"
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      if (phoneError) setPhoneError('');
+                    }}
+                    className={`w-full px-4 py-3 bg-light border rounded-xl focus:outline-none focus:ring-2 text-sm transition-all ${
+                      phoneError 
+                        ? 'border-red-500 focus:ring-red-200 focus:border-red-500' 
+                        : 'border-light-gray/40 focus:ring-primary/20 focus:border-primary'
+                    }`}
                     required
                   />
+                  {phoneError && (
+                    <p className="text-red-500 text-xs font-semibold mt-1">{phoneError}</p>
+                  )}
                 </div>
               </div>
 
