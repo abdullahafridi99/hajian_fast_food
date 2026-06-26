@@ -23,9 +23,6 @@ if (isCloudinaryConfigured) {
 
 // Local upload directory fallback
 const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
 
 // Multer memory storage (holds file in memory buffer so we can stream to Cloudinary or write locally)
 const storage = multer.memoryStorage();
@@ -110,6 +107,15 @@ router.post('/', (req, res) => {
       // Fallback: Save file to local disk since Cloudinary is not configured
       const filename = `${req.file.fieldname}-${Date.now()}${path.extname(req.file.originalname)}`;
       const filePath = path.join(uploadDir, filename);
+
+      // Create uploads directory if it does not exist
+      try {
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+      } catch (dirErr) {
+        console.error('Error creating uploads directory:', dirErr);
+      }
 
       fs.writeFile(filePath, req.file.buffer, (writeErr) => {
         if (writeErr) {
