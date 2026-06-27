@@ -5,6 +5,8 @@ const Admin = require('../models/Admin');
 const User = require('../models/User');
 const OTP = require('../models/OTP');
 const { protect, protectCustomer } = require('../middleware/auth');
+const { sendSMS } = require('../utils/smsHelper');
+
 
 // Generate JWT token
 const generateToken = (id) => {
@@ -87,10 +89,14 @@ router.put('/change-password', protect, async (req, res) => {
 // @route   POST /api/auth/customer/send-otp
 // @access  Public
 router.post('/customer/send-otp', async (req, res) => {
-  const { phoneNumber } = req.body;
+  const { phoneNumber, name } = req.body;
 
   if (!phoneNumber) {
     return res.status(400).json({ success: false, message: 'Mobile number is required' });
+  }
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ success: false, message: 'Full name is required to register/log in.' });
   }
 
   // Validate Pakistani mobile number: exactly 11 digits, starts with 03
@@ -123,21 +129,24 @@ router.post('/customer/send-otp', async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiration
 
-    // Save OTP to DB
+    // Save OTP to DB along with the name
     await OTP.create({
       phoneNumber: cleanPhone,
+      name: name.trim(),
       otp,
       expiresAt,
       lastSentAt: new Date(),
     });
 
-    // Log the OTP securely to backend server logs (critical for delivery simulation)
-    console.log(`\n-----------------------------------------------\n[SMS SIMULATION] Sent OTP: ${otp} to ${cleanPhone}\n-----------------------------------------------\n`);
+    // Send the OTP via SMS using Twilio helper
+    const smsSent = await sendSMS(cleanPhone, otp);
 
     // In development mode, return the OTP in the response payload for easy testing
     const responsePayload = {
       success: true,
-      message: 'OTP sent successfully (Simulated). Check server console logs.',
+      message: smsSent 
+        ? 'Verification code sent to your mobile number!' 
+        : 'OTP code generated (Twilio offline). Check server logs.',
     };
 
     if (process.env.NODE_ENV !== 'production') {
@@ -187,13 +196,17 @@ router.post('/customer/verify-otp', async (req, res) => {
       });
     }
 
-    // OTP matches! Create user if doesn't exist
+    // OTP matches! Create user if doesn't exist, or update name if does
     let user = await User.findOne({ phoneNumber: cleanPhone });
     if (!user) {
       user = await User.create({
         phoneNumber: cleanPhone,
-        name: `User-${cleanPhone.substring(7)}`, // Default username placeholder
+        name: otpRecord.name || `User-${cleanPhone.substring(7)}`,
       });
+    } else if (otpRecord.name) {
+      // Update name to match the latest login entry
+      user.name = otpRecord.name;
+      await user.save();
     }
 
     // Clear the OTP record to prevent replay attacks
@@ -237,4 +250,5 @@ router.get('/customer/me', protectCustomer, async (req, res) => {
 });
 
 module.exports = router;
+
 

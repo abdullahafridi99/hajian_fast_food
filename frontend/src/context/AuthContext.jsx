@@ -116,14 +116,15 @@ export const AuthProvider = ({ children }) => {
   // ==========================================
 
   // Request OTP for customer phone number
-  const sendCustomerOtp = async (phoneNumber) => {
+  const sendCustomerOtp = async (phoneNumber, name) => {
     try {
-      const response = await axios.post('/api/auth/customer/send-otp', { phoneNumber });
+      const response = await axios.post('/api/auth/customer/send-otp', { phoneNumber, name });
       return response.data; // contains { success, message, otp (in dev) }
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to send OTP. Please try again.');
     }
   };
+
 
   // Verify OTP and complete customer login
   const verifyCustomerOtp = async (phoneNumber, otp) => {

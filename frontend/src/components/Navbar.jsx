@@ -109,13 +109,6 @@ const Navbar = () => {
                 >
                   Sign In
                 </button>
-                <Link
-                  to="/admin/login"
-                  className="text-[10px] text-dark/40 hover:text-primary transition-colors font-bold uppercase tracking-wider"
-                  title="Admin Access"
-                >
-                  Admin
-                </Link>
               </div>
             )}
           </div>
@@ -208,14 +201,6 @@ const Navbar = () => {
                 >
                   👤 Sign In / Register
                 </button>
-                <Link
-                  to="/admin/login"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-xs font-semibold text-dark/40 hover:text-primary"
-                >
-                  <FiLock className="w-4 h-4" />
-                  <span>Admin Login</span>
-                </Link>
               </>
             )}
           </div>
