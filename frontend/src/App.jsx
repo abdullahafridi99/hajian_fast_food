@@ -7,6 +7,10 @@ import Footer from './components/Footer';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { ToastProvider } from './context/ToastContext';
+
+// Components
+import LoginModal from './components/LoginModal';
 
 // Public Pages
 import Home from './pages/Home';
@@ -50,43 +54,50 @@ function App() {
   return (
     <Router>
       <SettingsProvider>
-        <AuthProvider>
-          <CartProvider>
-            <Routes>
+        <ToastProvider>
+          <AuthProvider>
+            <CartProvider>
               
-              {/* Public Routes */}
-              <Route path="/" element={<PublicLayout />}>
-                <Route index element={<Home />} />
-                <Route path="about" element={<About />} />
-                <Route path="menu" element={<Menu />} />
-                <Route path="deals" element={<Deals />} />
-                <Route path="gallery" element={<Gallery />} />
-                <Route path="testimonials" element={<Testimonials />} />
-                <Route path="contact" element={<Contact />} />
-                <Route path="cart" element={<Cart />} />
-                <Route path="checkout" element={<Checkout />} />
-                <Route path="order-details/:id" element={<OrderDetails />} />
-              </Route>
+              <Routes>
+                
+                {/* Public Routes */}
+                <Route path="/" element={<PublicLayout />}>
+                  <Route index element={<Home />} />
+                  <Route path="about" element={<About />} />
+                  <Route path="menu" element={<Menu />} />
+                  <Route path="deals" element={<Deals />} />
+                  <Route path="gallery" element={<Gallery />} />
+                  <Route path="testimonials" element={<Testimonials />} />
+                  <Route path="contact" element={<Contact />} />
+                  <Route path="cart" element={<Cart />} />
+                  <Route path="checkout" element={<Checkout />} />
+                  <Route path="order-details/:id" element={<OrderDetails />} />
+                </Route>
 
-              {/* Admin Login Route (No Header/Footer) */}
-              <Route path="/admin/login" element={<AdminLogin />} />
+                {/* Admin Login Route (No Header/Footer) */}
+                <Route path="/admin/login" element={<AdminLogin />} />
 
-              {/* Protected Admin Console Routes */}
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<DashboardOverview />} />
-                <Route path="orders" element={<ManageOrders />} />
-                <Route path="categories" element={<ManageCategories />} />
-                <Route path="foods" element={<ManageFoods />} />
-                <Route path="deals" element={<ManageDeals />} />
-                <Route path="gallery" element={<ManageGallery />} />
-                <Route path="payments" element={<ManagePayments />} />
-                <Route path="testimonials" element={<ManageTestimonials />} />
-                <Route path="settings" element={<ManageSettings />} />
-              </Route>
+                {/* Protected Admin Console Routes */}
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<DashboardOverview />} />
+                  <Route path="orders" element={<ManageOrders />} />
+                  <Route path="categories" element={<ManageCategories />} />
+                  <Route path="foods" element={<ManageFoods />} />
+                  <Route path="deals" element={<ManageDeals />} />
+                  <Route path="gallery" element={<ManageGallery />} />
+                  <Route path="payments" element={<ManagePayments />} />
+                  <Route path="testimonials" element={<ManageTestimonials />} />
+                  <Route path="settings" element={<ManageSettings />} />
+                </Route>
 
-            </Routes>
-          </CartProvider>
-        </AuthProvider>
+              </Routes>
+
+              {/* Global Customer Verification Modal */}
+              <LoginModal />
+
+            </CartProvider>
+          </AuthProvider>
+        </ToastProvider>
       </SettingsProvider>
     </Router>
   );

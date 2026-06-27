@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
-const { protect } = require('../middleware/auth');
+const { protect, protectCustomer } = require('../middleware/auth');
 
 // @desc    Get all orders
 // @route   GET /api/orders
@@ -32,19 +32,20 @@ router.get('/:id', async (req, res) => {
 
 // @desc    Create a new order (Checkout)
 // @route   POST /api/orders
-// @access  Public
-router.post('/', async (req, res) => {
-  const { customerName, phoneNumber, address, items, totalAmount, paymentMethod, receiptImage } = req.body;
+// @access  Private (Customer)
+router.post('/', protectCustomer, async (req, res) => {
+  const { customerName, address, items, totalAmount, paymentMethod, receiptImage } = req.body;
+  const phoneNumber = req.user.phoneNumber; // Use the verified phone number from session
 
   if (!customerName || !phoneNumber || !address || !items || items.length === 0 || !totalAmount || !paymentMethod) {
     return res.status(400).json({ success: false, message: 'Please fill in all order details and add items to cart' });
   }
 
-  // Validate Pakistani phone number format
+  // Validate Pakistani phone number format (double safety check)
   const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
-  const pakPhoneRegex = /^(?:\+92|92|0)?3[0-9]{9}$/;
+  const pakPhoneRegex = /^03[0-9]{9}$/;
   if (!pakPhoneRegex.test(cleanPhone)) {
-    return res.status(400).json({ success: false, message: 'Please provide a valid Pakistani mobile number (e.g. 03001234567 or +923001234567).' });
+    return res.status(400).json({ success: false, message: 'Invalid Pakistani mobile number format on session.' });
   }
 
   try {
@@ -67,6 +68,7 @@ router.post('/', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
 
 // @desc    Update order status
 // @route   PUT /api/orders/:id/status

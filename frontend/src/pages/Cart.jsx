@@ -1,12 +1,16 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { FiTrash2, FiPlus, FiMinus, FiArrowLeft, FiShoppingBag } from 'react-icons/fi';
 
 const Cart = () => {
   const { cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
+  const { customerToken, setShowLoginModal } = useAuth();
+  const navigate = useNavigate();
 
   // Delivery policy: free delivery for orders above Rs. 1000, else Rs. 100
+
   const deliveryCharge = cartItems.length > 0 && cartTotal >= 1000 ? 0 : (cartItems.length > 0 ? 100 : 0);
   const grandTotal = cartTotal + deliveryCharge;
 
@@ -159,12 +163,19 @@ const Cart = () => {
               </div>
             </div>
 
-            <Link
-              to="/checkout"
+            <button
+              onClick={() => {
+                if (!customerToken) {
+                  setShowLoginModal(true);
+                } else {
+                  navigate('/checkout');
+                }
+              }}
               className="w-full py-4 rounded-xl bg-primary text-white hover:bg-secondary hover:text-dark-darker font-extrabold uppercase text-xs tracking-wider transition-all shadow-md flex items-center justify-center space-x-2"
             >
               <span>Proceed to Checkout</span>
-            </Link>
+            </button>
+
           </div>
 
         </section>

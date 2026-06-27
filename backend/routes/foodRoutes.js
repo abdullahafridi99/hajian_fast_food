@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Food = require('../models/Food');
 const { protect } = require('../middleware/auth');
+const { cleanImage } = require('../utils/imageCleanup');
 
 // @desc    Get all foods
 // @route   GET /api/foods
@@ -74,8 +75,12 @@ router.put('/:id', protect, async (req, res) => {
     if (category) food.category = category;
     if (description !== undefined) food.description = description;
     if (price !== undefined) food.price = price;
-    if (image) food.image = image;
     if (isAvailable !== undefined) food.isAvailable = isAvailable;
+
+    if (image && image !== food.image) {
+      await cleanImage(food.image);
+      food.image = image;
+    }
 
     const updatedFood = await food.save();
     const populatedFood = await Food.findById(updatedFood._id).populate('category');
@@ -97,11 +102,13 @@ router.delete('/:id', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Food item not found' });
     }
 
+    await cleanImage(food.image);
     await food.deleteOne();
     res.json({ success: true, message: 'Food item removed' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
 
 module.exports = router;

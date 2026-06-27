@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Gallery = require('../models/Gallery');
 const { protect } = require('../middleware/auth');
+const { cleanImage } = require('../utils/imageCleanup');
 
 // @desc    Get all gallery items
 // @route   GET /api/gallery
@@ -52,10 +53,14 @@ router.put('/:id', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Gallery item not found' });
     }
 
-    if (image) galleryItem.image = image;
     if (title) galleryItem.title = title;
     if (category) galleryItem.category = category;
     if (description !== undefined) galleryItem.description = description;
+
+    if (image && image !== galleryItem.image) {
+      await cleanImage(galleryItem.image);
+      galleryItem.image = image;
+    }
 
     const updatedItem = await galleryItem.save();
     res.json({ success: true, data: updatedItem });
@@ -75,6 +80,7 @@ router.delete('/:id', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Gallery item not found' });
     }
 
+    await cleanImage(galleryItem.image);
     await galleryItem.deleteOne();
     res.json({ success: true, message: 'Gallery item removed' });
   } catch (error) {

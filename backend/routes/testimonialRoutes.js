@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Testimonial = require('../models/Testimonial');
 const { protect } = require('../middleware/auth');
+const { cleanImage } = require('../utils/imageCleanup');
 
 // @desc    Get approved testimonials for public site
 // @route   GET /api/testimonials
@@ -85,6 +86,9 @@ router.delete('/:id', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Testimonial not found' });
     }
 
+    if (testimonial.image) {
+      await cleanImage(testimonial.image);
+    }
     await testimonial.deleteOne();
     res.json({ success: true, message: 'Testimonial removed' });
   } catch (error) {

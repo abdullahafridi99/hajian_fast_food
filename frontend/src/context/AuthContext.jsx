@@ -6,18 +6,30 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
+  // Admin auth states
   const [admin, setAdmin] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('adminToken') || null);
   const [loading, setLoading] = useState(true);
 
-  // Set default axios authorization header
-  if (token) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
-    delete axios.defaults.headers.common['Authorization'];
-  }
+  // Customer auth states
+  const [customer, setCustomer] = useState(null);
+  const [customerToken, setCustomerToken] = useState(localStorage.getItem('customerToken') || null);
+  const [customerLoading, setCustomerLoading] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
-  const checkAuth = async () => {
+  // Set default axios authorization header depending on active session
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else if (customerToken) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${customerToken}`;
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
+    }
+  }, [token, customerToken]);
+
+  // Verify Admin Auth
+  const checkAdminAuth = async () => {
     if (!token) {
       setAdmin(null);
       setLoading(false);
@@ -30,20 +42,47 @@ export const AuthProvider = ({ children }) => {
       if (response.data.success) {
         setAdmin(response.data);
       } else {
-        logout();
+        adminLogout();
       }
     } catch (error) {
-      console.error('Error verifying token:', error);
-      logout();
+      console.error('Error verifying admin token:', error);
+      adminLogout();
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    checkAuth();
-  }, [token]);
+  // Verify Customer Auth
+  const checkCustomerAuth = async () => {
+    if (!customerToken) {
+      setCustomer(null);
+      setCustomerLoading(false);
+      return;
+    }
 
+    try {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${customerToken}`;
+      const response = await axios.get('/api/auth/customer/me');
+      if (response.data.success) {
+        setCustomer(response.data.data);
+      } else {
+        customerLogout();
+      }
+    } catch (error) {
+      console.error('Error verifying customer token:', error);
+      customerLogout();
+    } finally {
+      setCustomerLoading(false);
+    }
+  };
+
+  // Check auth on load
+  useEffect(() => {
+    checkAdminAuth();
+    checkCustomerAuth();
+  }, [token, customerToken]);
+
+  // Admin Login
   const login = async (username, password) => {
     try {
       const response = await axios.post('/api/auth/login', { username, password });
@@ -62,16 +101,81 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  // Admin Logout
+  const adminLogout = () => {
     localStorage.removeItem('adminToken');
     setToken(null);
     setAdmin(null);
-    delete axios.defaults.headers.common['Authorization'];
+    if (!customerToken) {
+      delete axios.defaults.headers.common['Authorization'];
+    }
+  };
+
+  // ==========================================
+  // CUSTOMER MOBILE OTP AUTHENTICATION METHODS
+  // ==========================================
+
+  // Request OTP for customer phone number
+  const sendCustomerOtp = async (phoneNumber) => {
+    try {
+      const response = await axios.post('/api/auth/customer/send-otp', { phoneNumber });
+      return response.data; // contains { success, message, otp (in dev) }
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to send OTP. Please try again.');
+    }
+  };
+
+  // Verify OTP and complete customer login
+  const verifyCustomerOtp = async (phoneNumber, otp) => {
+    try {
+      const response = await axios.post('/api/auth/customer/verify-otp', { phoneNumber, otp });
+      if (response.data.success) {
+        const { token: userToken, user } = response.data;
+        localStorage.setItem('customerToken', userToken);
+        setCustomerToken(userToken);
+        setCustomer(user);
+        return { success: true, user };
+      }
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Invalid OTP verification code.');
+    }
+  };
+
+  // Customer Logout (Preserves Cart!)
+  const customerLogout = () => {
+    localStorage.removeItem('customerToken');
+    setCustomerToken(null);
+    setCustomer(null);
+    if (!token) {
+      delete axios.defaults.headers.common['Authorization'];
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ admin, token, loading, login, logout, checkAuth }}>
+    <AuthContext.Provider
+      value={{
+        // Admin
+        admin,
+        token,
+        loading,
+        login,
+        logout: adminLogout,
+        checkAuth: checkAdminAuth,
+        
+        // Customer
+        customer,
+        customerToken,
+        customerLoading,
+        showLoginModal,
+        setShowLoginModal,
+        sendCustomerOtp,
+        verifyCustomerOtp,
+        customerLogout,
+        checkCustomerAuth,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
+export default AuthContext;

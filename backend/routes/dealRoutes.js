@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Deal = require('../models/Deal');
 const { protect } = require('../middleware/auth');
+const { cleanImage } = require('../utils/imageCleanup');
 
 // @desc    Get all deals
 // @route   GET /api/deals
@@ -75,10 +76,14 @@ router.put('/:id', protect, async (req, res) => {
     if (description !== undefined) deal.description = description;
     if (originalPrice !== undefined) deal.originalPrice = originalPrice;
     if (discountPrice !== undefined) deal.discountPrice = discountPrice;
-    if (image) deal.image = image;
     if (startDate) deal.startDate = new Date(startDate);
     if (endDate) deal.endDate = new Date(endDate);
     if (isActive !== undefined) deal.isActive = isActive;
+
+    if (image && image !== deal.image) {
+      await cleanImage(deal.image);
+      deal.image = image;
+    }
 
     const updatedDeal = await deal.save();
     res.json({ success: true, data: updatedDeal });
@@ -98,11 +103,13 @@ router.delete('/:id', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Deal not found' });
     }
 
+    await cleanImage(deal.image);
     await deal.deleteOne();
     res.json({ success: true, message: 'Deal removed' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
 
 module.exports = router;

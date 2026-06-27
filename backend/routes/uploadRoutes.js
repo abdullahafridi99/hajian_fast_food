@@ -4,19 +4,16 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
+const { isCloudinaryConfigured, deleteFromCloudinary } = require('../utils/cloudinaryHelper');
 
-// Check if Cloudinary is configured
-const isCloudinaryConfigured = 
-  process.env.CLOUDINARY_CLOUD_NAME && 
-  process.env.CLOUDINARY_API_KEY && 
-  process.env.CLOUDINARY_API_SECRET;
-
+// Check and log Cloudinary status
 if (isCloudinaryConfigured) {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
+  console.log('[CLOUDINARY] Cloudinary initialized. Trying to use Cloudinary for uploads.');
 } else {
   console.warn('[WARNING] Cloudinary credentials are not configured. Uploads will be saved to local storage.');
 }
@@ -24,7 +21,7 @@ if (isCloudinaryConfigured) {
 // Local upload directory fallback
 const uploadDir = path.join(__dirname, '../uploads');
 
-// Multer memory storage (holds file in memory buffer so we can stream to Cloudinary or write locally)
+// Multer memory storage
 const storage = multer.memoryStorage();
 
 // Check File Type
@@ -36,7 +33,7 @@ function checkFileType(file, cb) {
   if (extname && mimetype) {
     return cb(null, true);
   } else {
-    cb(new Error('Images only! (Support formats: JPG, JPEG, PNG, WEBP)'));
+    cb(new Error('Images only! (Supported formats: JPG, JPEG, PNG, WEBP)'));
   }
 }
 
@@ -50,16 +47,14 @@ const upload = multer({
 
 // @desc    Upload an image
 // @route   POST /api/upload
-// @access  Public (so customers can upload receipts; admin uploads are also handled here)
+// @access  Public
 router.post('/', (req, res) => {
   const uploadSingle = upload.single('image');
 
   uploadSingle(req, res, async function (err) {
     if (err instanceof multer.MulterError) {
-      // A Multer error occurred when uploading.
       return res.status(400).json({ success: false, message: `Multer upload error: ${err.message}` });
     } else if (err) {
-      // An unknown error occurred when uploading.
       return res.status(400).json({ success: false, message: err.message });
     }
 
@@ -69,12 +64,14 @@ router.post('/', (req, res) => {
 
     if (isCloudinaryConfigured) {
       try {
-        // Upload to Cloudinary using a buffer stream
+        // Upload to Cloudinary using a buffer stream with optimization settings
         const uploadStream = () => {
           return new Promise((resolve, reject) => {
             const stream = cloudinary.uploader.upload_stream(
               {
                 folder: 'hajian_foods', // Save to a specific folder on Cloudinary
+                quality: 'auto',        // Automatic quality optimization
+                fetch_format: 'auto',   // Automatic format optimization (WEBP where supported)
               },
               (error, result) => {
                 if (result) {
@@ -98,6 +95,15 @@ router.post('/', (req, res) => {
         });
       } catch (error) {
         console.error('Cloudinary upload error:', error);
+        
+        // Check for common credential errors
+        if (error.http_code === 401 || error.message.includes('mismatch') || error.message.includes('credentials')) {
+          return res.status(401).json({
+            success: false,
+            message: `Cloudinary Authentication Failed: Invalid credentials or cloud name mismatch. Please check your backend .env file. Details: ${error.message}`
+          });
+        }
+        
         return res.status(500).json({ 
           success: false, 
           message: `Cloudinary upload failed: ${error.message}` 
@@ -134,6 +140,42 @@ router.post('/', (req, res) => {
       });
     }
   });
+});
+
+// @desc    Delete an image from Cloudinary or local storage
+// @route   DELETE /api/upload
+// @access  Public
+router.delete('/', async (req, res) => {
+  const { url } = req.body;
+
+  if (!url) {
+    return res.status(400).json({ success: false, message: 'Image URL is required for deletion' });
+  }
+
+  try {
+    let deleted = false;
+
+    if (url.includes('cloudinary.com')) {
+      deleted = await deleteFromCloudinary(url);
+    } else if (url.startsWith('/uploads/')) {
+      const filename = url.replace('/uploads/', '');
+      const filePath = path.join(uploadDir, filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        deleted = true;
+        console.log(`[LOCAL STORAGE] Deleted local file: ${filePath}`);
+      }
+    }
+
+    if (deleted) {
+      return res.json({ success: true, message: 'Image deleted successfully' });
+    } else {
+      return res.status(404).json({ success: false, message: 'Image not found or could not be deleted' });
+    }
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    return res.status(500).json({ success: false, message: `Image deletion failed: ${error.message}` });
+  }
 });
 
 module.exports = router;

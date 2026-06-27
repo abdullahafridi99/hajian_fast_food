@@ -8,7 +8,7 @@ import { FiShoppingCart, FiMenu, FiX, FiLock, FiLogOut } from 'react-icons/fi';
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { cartCount } = useCart();
-  const { admin, logout } = useAuth();
+  const { admin, logout, customer, customerLogout, setShowLoginModal } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
 
@@ -88,14 +88,35 @@ const Navbar = () => {
                   <FiLogOut className="w-5 h-5" />
                 </button>
               </div>
+            ) : customer ? (
+              <div className="flex items-center space-x-3 bg-primary/10 border border-primary/20 py-1.5 px-3 rounded-full">
+                <span className="text-xs font-black text-primary">
+                  📞 {customer.phoneNumber}
+                </span>
+                <button
+                  onClick={customerLogout}
+                  className="p-1 text-gray-500 hover:text-primary transition-colors"
+                  title="Logout Customer"
+                >
+                  <FiLogOut className="w-4 h-4" />
+                </button>
+              </div>
             ) : (
-              <Link
-                to="/admin/login"
-                className="text-xs text-dark/60 hover:text-primary transition-colors flex items-center space-x-1"
-              >
-                <FiLock className="w-3 h-3" />
-                <span>Login</span>
-              </Link>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="text-xs font-black uppercase tracking-wider py-1.5 px-4 bg-primary text-white rounded-full hover:bg-secondary hover:text-dark transition-all duration-300 shadow-sm"
+                >
+                  Sign In
+                </button>
+                <Link
+                  to="/admin/login"
+                  className="text-[10px] text-dark/40 hover:text-primary transition-colors font-bold uppercase tracking-wider"
+                  title="Admin Access"
+                >
+                  Admin
+                </Link>
+              </div>
             )}
           </div>
 
@@ -160,20 +181,48 @@ const Navbar = () => {
                   <span>Logout</span>
                 </button>
               </>
+            ) : customer ? (
+              <>
+                <div className="px-3 py-2 text-sm font-bold text-dark/60">
+                  Logged in: <span className="text-primary">{customer.phoneNumber}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    customerLogout();
+                  }}
+                  className="flex w-full items-center space-x-2 px-3 py-2 rounded-md text-base font-semibold text-primary hover:bg-primary/5"
+                >
+                  <FiLogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </>
             ) : (
-              <Link
-                to="/admin/login"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-semibold text-dark/60 hover:text-primary"
-              >
-                <FiLock className="w-4 h-4" />
-                <span>Admin Login</span>
-              </Link>
+              <>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setShowLoginModal(true);
+                  }}
+                  className="flex w-full items-center space-x-2 px-3 py-2 rounded-md text-base font-semibold text-primary hover:bg-primary/5"
+                >
+                  👤 Sign In / Register
+                </button>
+                <Link
+                  to="/admin/login"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-xs font-semibold text-dark/40 hover:text-primary"
+                >
+                  <FiLock className="w-4 h-4" />
+                  <span>Admin Login</span>
+                </Link>
+              </>
             )}
           </div>
         </div>
       )}
     </nav>
+
   );
 };
 

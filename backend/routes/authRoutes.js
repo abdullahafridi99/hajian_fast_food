@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
-const { protect } = require('../middleware/auth');
+const User = require('../models/User');
+const OTP = require('../models/OTP');
+const { protect, protectCustomer } = require('../middleware/auth');
 
 // Generate JWT token
 const generateToken = (id) => {
@@ -77,4 +79,162 @@ router.put('/change-password', protect, async (req, res) => {
   }
 });
 
+// ==========================================
+// CUSTOMER MOBILE OTP AUTHENTICATION ROUTES
+// ==========================================
+
+// @desc    Generate and Send OTP to Pakistani Mobile Number
+// @route   POST /api/auth/customer/send-otp
+// @access  Public
+router.post('/customer/send-otp', async (req, res) => {
+  const { phoneNumber } = req.body;
+
+  if (!phoneNumber) {
+    return res.status(400).json({ success: false, message: 'Mobile number is required' });
+  }
+
+  // Validate Pakistani mobile number: exactly 11 digits, starts with 03
+  const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+  const pakPhoneRegex = /^03\d{9}$/;
+  if (!pakPhoneRegex.test(cleanPhone)) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Invalid Pakistani mobile number. Must be exactly 11 digits starting with "03" (e.g. 03001234567).' 
+    });
+  }
+
+  try {
+    // Check if an OTP was recently sent (enforce 60-second cooldown)
+    const existingOtp = await OTP.findOne({ phoneNumber: cleanPhone });
+    if (existingOtp) {
+      const timeElapsed = Date.now() - new Date(existingOtp.lastSentAt).getTime();
+      if (timeElapsed < 60000) {
+        const remaining = Math.ceil((60000 - timeElapsed) / 1000);
+        return res.status(429).json({ 
+          success: false, 
+          message: `Please wait ${remaining} seconds before requesting a new OTP.` 
+        });
+      }
+      // Delete old OTP before creating a new one
+      await OTP.deleteOne({ phoneNumber: cleanPhone });
+    }
+
+    // Generate a secure 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiration
+
+    // Save OTP to DB
+    await OTP.create({
+      phoneNumber: cleanPhone,
+      otp,
+      expiresAt,
+      lastSentAt: new Date(),
+    });
+
+    // Log the OTP securely to backend server logs (critical for delivery simulation)
+    console.log(`\n-----------------------------------------------\n[SMS SIMULATION] Sent OTP: ${otp} to ${cleanPhone}\n-----------------------------------------------\n`);
+
+    // In development mode, return the OTP in the response payload for easy testing
+    const responsePayload = {
+      success: true,
+      message: 'OTP sent successfully (Simulated). Check server console logs.',
+    };
+
+    if (process.env.NODE_ENV !== 'production') {
+      responsePayload.otp = otp; // Expose to frontend for automated/easy testing
+    }
+
+    res.json(responsePayload);
+  } catch (error) {
+    console.error('Error in send-otp:', error);
+    res.status(500).json({ success: false, message: 'Server error while sending OTP' });
+  }
+});
+
+// @desc    Verify OTP and log in customer
+// @route   POST /api/auth/customer/verify-otp
+// @access  Public
+router.post('/customer/verify-otp', async (req, res) => {
+  const { phoneNumber, otp } = req.body;
+
+  if (!phoneNumber || !otp) {
+    return res.status(400).json({ success: false, message: 'Phone number and OTP are required' });
+  }
+
+  const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+
+  try {
+    const otpRecord = await OTP.findOne({ phoneNumber: cleanPhone });
+
+    if (!otpRecord) {
+      return res.status(400).json({ success: false, message: 'OTP expired or not found. Please request a new one.' });
+    }
+
+    // Rate limiting attempts (max 3 failed tries)
+    if (otpRecord.attempts >= 3) {
+      await OTP.deleteOne({ phoneNumber: cleanPhone });
+      return res.status(400).json({ success: false, message: 'Too many invalid attempts. Please request a new OTP.' });
+    }
+
+    // Verify match
+    if (otpRecord.otp !== otp.trim()) {
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+      const remainingAttempts = 3 - otpRecord.attempts;
+      return res.status(400).json({ 
+        success: false, 
+        message: `Incorrect OTP. You have ${remainingAttempts} attempts remaining.` 
+      });
+    }
+
+    // OTP matches! Create user if doesn't exist
+    let user = await User.findOne({ phoneNumber: cleanPhone });
+    if (!user) {
+      user = await User.create({
+        phoneNumber: cleanPhone,
+        name: `User-${cleanPhone.substring(7)}`, // Default username placeholder
+      });
+    }
+
+    // Clear the OTP record to prevent replay attacks
+    await OTP.deleteOne({ phoneNumber: cleanPhone });
+
+    // Generate JWT token
+    const token = generateToken(user._id);
+
+    res.json({
+      success: true,
+      message: 'Logged in successfully',
+      token,
+      user: {
+        _id: user._id,
+        phoneNumber: user.phoneNumber,
+        name: user.name,
+      }
+    });
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    res.status(500).json({ success: false, message: 'Server error during OTP verification' });
+  }
+});
+
+// @desc    Get current customer profile
+// @route   GET /api/auth/customer/me
+// @access  Private (Customer)
+router.get('/customer/me', protectCustomer, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        _id: req.user._id,
+        phoneNumber: req.user.phoneNumber,
+        name: req.user.name,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
+
