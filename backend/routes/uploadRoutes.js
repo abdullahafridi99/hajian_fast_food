@@ -125,10 +125,12 @@ router.post('/', (req, res) => {
           url: result.secure_url, // Return the absolute Cloudinary secure URL
         });
       } catch (error) {
-        console.warn('[CLOUDINARY FALLBACK] Cloudinary upload failed (e.g. bad credentials/timeout). Falling back to local storage. Details:', error.message);
+        const errorDetail = error?.message || error || 'Unknown error';
+        console.warn('[CLOUDINARY FALLBACK] Cloudinary upload failed (e.g. bad credentials/timeout). Falling back to local storage. Details:', errorDetail);
         // Fall back to local disk storage gracefully instead of failing
         return saveToLocal(req.file, res);
       }
+
     } else {
       // Fallback: Save file to local disk since Cloudinary is not configured
       return saveToLocal(req.file, res);
