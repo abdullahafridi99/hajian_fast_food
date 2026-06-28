@@ -86,7 +86,8 @@ const ManageGallery = () => {
       }
     } catch (error) {
       console.error('Error uploading gallery image:', error);
-      setUploadError('Failed to upload image. Try again.');
+      const errMsg = error.response?.data?.message || 'Failed to upload image. Try again.';
+      setUploadError(errMsg);
     } finally {
       setUploading(false);
     }

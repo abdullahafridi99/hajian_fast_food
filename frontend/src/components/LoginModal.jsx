@@ -94,9 +94,6 @@ const LoginModal = () => {
         showToast('OTP code sent successfully!', 'success');
         setStep('otp');
         setCooldown(60);
-        if (res.otp) {
-          setDevOtp(res.otp);
-        }
       }
     } catch (err) {
       setError(err.message);
@@ -141,9 +138,6 @@ const LoginModal = () => {
       if (res.success) {
         showToast('New OTP code sent successfully!', 'success');
         setCooldown(60);
-        if (res.otp) {
-          setDevOtp(res.otp);
-        }
       }
     } catch (err) {
       setError(err.message);
@@ -209,17 +203,7 @@ const LoginModal = () => {
                 </div>
               )}
 
-              {/* Dev Mode OTP helper */}
-              {devOtp && (
-                <div className="p-4 bg-green-50 text-green-800 rounded-xl border border-green-200 text-xs font-bold flex flex-col gap-1">
-                  <div className="flex items-center space-x-1">
-                    <FiCheckCircle className="w-4 h-4 text-green-600" />
-                    <span>[Testing Helper] OTP Sent:</span>
-                  </div>
-                  <p className="text-lg font-black tracking-widest text-primary mt-1">{devOtp}</p>
-                  <p className="text-[10px] text-green-600/80 font-semibold uppercase">Use this code below for quick login verification</p>
-                </div>
-              )}
+
 
               {/* Step 1: Phone Input Form */}
               {step === 'phone' && (

@@ -123,7 +123,8 @@ const ManageDeals = () => {
       }
     } catch (error) {
       console.error('Error uploading deal photo:', error);
-      setUploadError('Failed to upload image. Try again.');
+      const errMsg = error.response?.data?.message || 'Failed to upload image. Try again.';
+      setUploadError(errMsg);
     } finally {
       setUploading(false);
     }

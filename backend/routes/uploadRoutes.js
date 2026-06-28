@@ -63,7 +63,7 @@ router.post('/', (req, res) => {
     }
 
     // Reusable local storage save function
-    const saveToLocal = (file, responseObj) => {
+    const saveToLocal = (file, responseObj, cloudinaryError = null) => {
       const filename = `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`;
       const filePath = path.join(uploadDir, filename);
 
@@ -79,9 +79,12 @@ router.post('/', (req, res) => {
       fs.writeFile(filePath, file.buffer, (writeErr) => {
         if (writeErr) {
           console.error('Local file write error:', writeErr);
+          const finalMessage = cloudinaryError
+            ? `Upload failed. Cloudinary error: ${cloudinaryError}. Local storage fallback error: ${writeErr.message}`
+            : `Local file write failed: ${writeErr.message}`;
           return responseObj.status(500).json({ 
             success: false, 
-            message: `Local file write failed: ${writeErr.message}` 
+            message: finalMessage 
           });
         }
 
@@ -128,7 +131,7 @@ router.post('/', (req, res) => {
         const errorDetail = error?.message || error || 'Unknown error';
         console.warn('[CLOUDINARY FALLBACK] Cloudinary upload failed (e.g. bad credentials/timeout). Falling back to local storage. Details:', errorDetail);
         // Fall back to local disk storage gracefully instead of failing
-        return saveToLocal(req.file, res);
+        return saveToLocal(req.file, res, errorDetail);
       }
 
     } else {

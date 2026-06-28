@@ -1,11 +1,14 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import { useToast } from './ToastContext';
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
+  const { showToast } = useToast();
+
   // Admin auth states
   const [admin, setAdmin] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('adminToken') || null);
@@ -84,6 +87,38 @@ export const AuthProvider = ({ children }) => {
     checkAdminAuth();
     checkCustomerAuth();
   }, [token, customerToken]);
+
+  // Inactivity Auto Logout for Admin (15 minutes)
+  useEffect(() => {
+    if (!token || !admin) return;
+
+    const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+    let lastActivity = Date.now();
+
+    const handleActivity = () => {
+      lastActivity = Date.now();
+    };
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach((event) => {
+      window.addEventListener(event, handleActivity);
+    });
+
+    const interval = setInterval(() => {
+      const inactiveTime = Date.now() - lastActivity;
+      if (inactiveTime >= INACTIVITY_TIMEOUT) {
+        adminLogout();
+        showToast('Your session has expired due to inactivity. Please log in again.', 'warning');
+      }
+    }, 10000);
+
+    return () => {
+      events.forEach((event) => {
+        window.removeEventListener(event, handleActivity);
+      });
+      clearInterval(interval);
+    };
+  }, [token, admin]);
 
   // Admin Login
   const login = async (username, password) => {

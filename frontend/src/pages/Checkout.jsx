@@ -45,7 +45,9 @@ const Checkout = () => {
   // Pre-fill phone number and name from customer profile
   useEffect(() => {
     if (customer) {
-      setPhoneNumber(customer.phoneNumber);
+      if (customer.phoneNumber && !phoneNumber) {
+        setPhoneNumber(customer.phoneNumber);
+      }
       if (customer.name && !customerName) {
         setCustomerName(customer.name);
       }
@@ -215,17 +217,22 @@ const Checkout = () => {
 
                 {/* Phone Number */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Phone Number (Verified)</label>
+                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Delivery Contact Number</label>
                   <div className="relative">
                     <input
                       type="tel"
+                      placeholder="e.g. 03001234567"
                       value={phoneNumber}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-100 border border-light-gray/40 rounded-xl focus:outline-none text-sm text-gray-500 cursor-not-allowed font-semibold"
-                      readOnly
-                      disabled
+                      onChange={(e) => {
+                        setPhoneNumber(e.target.value);
+                        setPhoneError('');
+                      }}
+                      className="w-full pl-12 pr-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark font-semibold"
+                      required
                     />
                     <FiPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                   </div>
+                  {phoneError && <p className="text-red-500 text-[11px] mt-1">{phoneError}</p>}
                 </div>
 
 
