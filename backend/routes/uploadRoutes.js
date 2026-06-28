@@ -62,6 +62,37 @@ router.post('/', (req, res) => {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
+    // Reusable local storage save function
+    const saveToLocal = (file, responseObj) => {
+      const filename = `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`;
+      const filePath = path.join(uploadDir, filename);
+
+      // Create uploads directory if it does not exist
+      try {
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+      } catch (dirErr) {
+        console.error('Error creating uploads directory:', dirErr);
+      }
+
+      fs.writeFile(filePath, file.buffer, (writeErr) => {
+        if (writeErr) {
+          console.error('Local file write error:', writeErr);
+          return responseObj.status(500).json({ 
+            success: false, 
+            message: `Local file write failed: ${writeErr.message}` 
+          });
+        }
+
+        return responseObj.json({
+          success: true,
+          message: 'Image uploaded successfully to local storage (Fallback)',
+          url: `/uploads/${filename}`,
+        });
+      });
+    };
+
     if (isCloudinaryConfigured) {
       try {
         // Upload to Cloudinary using a buffer stream with optimization settings
@@ -94,52 +125,16 @@ router.post('/', (req, res) => {
           url: result.secure_url, // Return the absolute Cloudinary secure URL
         });
       } catch (error) {
-        console.error('Cloudinary upload error:', error);
-        
-        // Check for common credential errors
-        if (error.http_code === 401 || error.message.includes('mismatch') || error.message.includes('credentials')) {
-          return res.status(401).json({
-            success: false,
-            message: `Cloudinary Authentication Failed: Invalid credentials or cloud name mismatch. Please check your backend .env file. Details: ${error.message}`
-          });
-        }
-        
-        return res.status(500).json({ 
-          success: false, 
-          message: `Cloudinary upload failed: ${error.message}` 
-        });
+        console.warn('[CLOUDINARY FALLBACK] Cloudinary upload failed (e.g. bad credentials/timeout). Falling back to local storage. Details:', error.message);
+        // Fall back to local disk storage gracefully instead of failing
+        return saveToLocal(req.file, res);
       }
     } else {
       // Fallback: Save file to local disk since Cloudinary is not configured
-      const filename = `${req.file.fieldname}-${Date.now()}${path.extname(req.file.originalname)}`;
-      const filePath = path.join(uploadDir, filename);
-
-      // Create uploads directory if it does not exist
-      try {
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
-      } catch (dirErr) {
-        console.error('Error creating uploads directory:', dirErr);
-      }
-
-      fs.writeFile(filePath, req.file.buffer, (writeErr) => {
-        if (writeErr) {
-          console.error('Local file write error:', writeErr);
-          return res.status(500).json({ 
-            success: false, 
-            message: `Local file write failed: ${writeErr.message}` 
-          });
-        }
-
-        return res.json({
-          success: true,
-          message: 'Image uploaded successfully to local storage (Fallback)',
-          url: `/uploads/${filename}`,
-        });
-      });
+      return saveToLocal(req.file, res);
     }
   });
+
 });
 
 // @desc    Delete an image from Cloudinary or local storage
