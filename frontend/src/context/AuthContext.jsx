@@ -37,8 +37,9 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      const response = await axios.get('/api/auth/me');
+      const response = await axios.get('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (response.data.success) {
         setAdmin(response.data);
       } else {
@@ -61,8 +62,9 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${customerToken}`;
-      const response = await axios.get('/api/auth/customer/me');
+      const response = await axios.get('/api/auth/customer/me', {
+        headers: { Authorization: `Bearer ${customerToken}` }
+      });
       if (response.data.success) {
         setCustomer(response.data.data);
       } else {
@@ -75,6 +77,7 @@ export const AuthProvider = ({ children }) => {
       setCustomerLoading(false);
     }
   };
+
 
   // Check auth on load
   useEffect(() => {
