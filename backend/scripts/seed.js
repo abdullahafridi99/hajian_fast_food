@@ -37,6 +37,7 @@ const seedData = async () => {
     const admin = await Admin.create({
       username: 'admin',
       password: 'admin123', // Plain text; pre-save hook in Admin model hashes it once.
+      email: 'muhammadab0348@gmail.com',
     });
     console.log(`Admin seeded with username: "admin" and password: "admin123"`);
 

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const { protect, protectCustomer } = require('../middleware/auth');
+const { sendWhatsAppNotification } = require('../utils/whatsappHelper');
 
 // @desc    Get all orders
 // @route   GET /api/orders
@@ -34,8 +35,8 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/orders
 // @access  Private (Customer)
 router.post('/', protectCustomer, async (req, res) => {
-  const { customerName, address, items, totalAmount, paymentMethod, receiptImage } = req.body;
-  const phoneNumber = req.user.phoneNumber; // Use the verified phone number from session
+  const { customerName, phoneNumber: bodyPhoneNumber, address, items, totalAmount, paymentMethod, receiptImage } = req.body;
+  const phoneNumber = bodyPhoneNumber || req.user.phoneNumber; // Use custom delivery phone if provided, else verified session phone
 
   if (!customerName || !phoneNumber || !address || !items || items.length === 0 || !totalAmount || !paymentMethod) {
     return res.status(400).json({ success: false, message: 'Please fill in all order details and add items to cart' });
@@ -45,7 +46,7 @@ router.post('/', protectCustomer, async (req, res) => {
   const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
   const pakPhoneRegex = /^03[0-9]{9}$/;
   if (!pakPhoneRegex.test(cleanPhone)) {
-    return res.status(400).json({ success: false, message: 'Invalid Pakistani mobile number format on session.' });
+    return res.status(400).json({ success: false, message: 'Invalid Pakistani mobile number format.' });
   }
 
   try {
@@ -61,6 +62,11 @@ router.post('/', protectCustomer, async (req, res) => {
       paymentMethod,
       paymentStatus,
       receiptImage,
+    });
+
+    // Send WhatsApp notification asynchronously
+    sendWhatsAppNotification(order).catch(err => {
+      console.error('[WHATSAPP NOTIFICATION ERROR] Failed to send order placement message:', err);
     });
 
     res.status(201).json({ success: true, data: order });

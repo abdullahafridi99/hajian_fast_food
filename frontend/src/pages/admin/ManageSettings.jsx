@@ -18,6 +18,9 @@ const ManageSettings = () => {
   const [pwSubmitting, setPwSubmitting] = useState(false);
   const [pwSuccess, setPwSuccess] = useState(false);
   const [pwError, setPwError] = useState('');
+  const [pwStep, setPwStep] = useState('request'); // 'request' or 'verify'
+  const [otp, setOtp] = useState('');
+  const [maskedEmail, setMaskedEmail] = useState('');
 
   // Setting States
   const [restaurantName, setRestaurantName] = useState('HAJIAN FOODS');
@@ -114,21 +117,35 @@ const ManageSettings = () => {
 
     setPwSubmitting(true);
     try {
-      const response = await axios.put('/api/auth/change-password', {
-        currentPassword,
-        newPassword,
-      });
+      if (pwStep === 'request') {
+        const response = await axios.post('/api/auth/change-password/request-otp', {
+          currentPassword,
+        });
 
-      if (response.data.success) {
-        setPwSuccess(true);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
+        if (response.data.success) {
+          setPwStep('verify');
+          setMaskedEmail(response.data.maskedEmail);
+        }
+      } else {
+        const response = await axios.put('/api/auth/change-password', {
+          currentPassword,
+          newPassword,
+          otp,
+        });
+
+        if (response.data.success) {
+          setPwSuccess(true);
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+          setOtp('');
+          setPwStep('request');
+        }
       }
     } catch (err) {
       console.error('Error changing password:', err);
       setPwError(
-        err.response?.data?.message || 'Failed to change password. Please try again.'
+        err.response?.data?.message || 'Failed to process request. Please try again.'
       );
     } finally {
       setPwSubmitting(false);
@@ -398,8 +415,9 @@ const ManageSettings = () => {
               placeholder="Enter current password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark"
+              className="w-full px-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               required
+              disabled={pwStep === 'verify'}
             />
           </div>
 
@@ -411,8 +429,9 @@ const ManageSettings = () => {
                 placeholder="Enter new password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark"
+                className="w-full px-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 required
+                disabled={pwStep === 'verify'}
               />
             </div>
 
@@ -423,19 +442,54 @@ const ManageSettings = () => {
                 placeholder="Confirm new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark"
+                className="w-full px-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 required
+                disabled={pwStep === 'verify'}
               />
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={pwSubmitting}
-            className="w-full py-4 rounded-xl bg-primary text-white hover:bg-secondary hover:text-dark-darker font-extrabold uppercase text-xs tracking-wider transition-all shadow-md disabled:bg-gray-300"
-          >
-            {pwSubmitting ? 'Updating Password...' : 'Change Password'}
-          </button>
+          {pwStep === 'verify' && (
+            <div className="space-y-1 bg-primary/5 p-4 rounded-2xl border border-primary/20 space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wide text-primary">Email Verification Code (OTP)</label>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                An OTP has been sent to your registered email: <strong className="text-dark font-black">{maskedEmail}</strong>. Please check your inbox or spam folder.
+              </p>
+              <input
+                type="text"
+                placeholder="Enter 6-digit email OTP"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="w-full px-4 py-3 bg-white border border-primary/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-center font-extrabold tracking-widest text-dark"
+                required
+              />
+            </div>
+          )}
+
+          <div className="flex gap-4">
+            {pwStep === 'verify' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPwStep('request');
+                  setOtp('');
+                  setPwError('');
+                }}
+                className="flex-1 py-4 rounded-xl border border-light-gray/40 hover:bg-light text-dark font-extrabold uppercase text-xs tracking-wider transition-all"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={pwSubmitting}
+              className="flex-grow py-4 rounded-xl bg-primary text-white hover:bg-secondary hover:text-dark-darker font-extrabold uppercase text-xs tracking-wider transition-all shadow-md disabled:bg-gray-300"
+            >
+              {pwSubmitting 
+                ? (pwStep === 'request' ? 'Requesting OTP...' : 'Updating Password...') 
+                : (pwStep === 'request' ? 'Request Password Change OTP' : 'Verify & Change Password')}
+            </button>
+          </div>
         </form>
       </section>
     </div>

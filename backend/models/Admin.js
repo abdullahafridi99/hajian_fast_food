@@ -13,6 +13,12 @@ const adminSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    email: {
+      type: String,
+      default: 'muhammadab0348@gmail.com',
+      trim: true,
+      lowercase: true,
+    },
   },
   {
     timestamps: true,
