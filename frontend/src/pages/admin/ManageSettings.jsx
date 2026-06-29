@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
 import { FiCheckCircle, FiSettings, FiPhone, FiInfo, FiLock } from 'react-icons/fi';
 import { FaFacebook, FaInstagram, FaTiktok, FaWhatsapp } from 'react-icons/fa';
 
 const ManageSettings = () => {
   const { refreshAll } = useSettings();
+  const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -21,6 +23,8 @@ const ManageSettings = () => {
   const [pwStep, setPwStep] = useState('request'); // 'request' or 'verify'
   const [otp, setOtp] = useState('');
   const [maskedEmail, setMaskedEmail] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+  const pwSubmittingRef = useRef(false);
 
   // Setting States
   const [restaurantName, setRestaurantName] = useState('HAJIAN FOODS');
@@ -44,6 +48,17 @@ const ManageSettings = () => {
     slogan: 'GOOD MOOD GOOD FOOD',
     description: '',
   });
+
+  // Cooldown timer for password OTP resend
+  useEffect(() => {
+    let timer;
+    if (cooldown > 0) {
+      timer = setInterval(() => {
+        setCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -102,6 +117,8 @@ const ManageSettings = () => {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
+    if (pwSubmittingRef.current) return;
+
     setPwSuccess(false);
     setPwError('');
 
@@ -115,6 +132,7 @@ const ManageSettings = () => {
       return;
     }
 
+    pwSubmittingRef.current = true;
     setPwSubmitting(true);
     try {
       if (pwStep === 'request') {
@@ -125,6 +143,7 @@ const ManageSettings = () => {
         if (response.data.success) {
           setPwStep('verify');
           setMaskedEmail(response.data.maskedEmail);
+          setCooldown(60);
         }
       } else {
         const response = await axios.put('/api/auth/change-password', {
@@ -140,6 +159,11 @@ const ManageSettings = () => {
           setConfirmPassword('');
           setOtp('');
           setPwStep('request');
+          
+          // Auto-logout after successful password change
+          setTimeout(() => {
+            logout();
+          }, 1500);
         }
       }
     } catch (err) {
@@ -148,6 +172,32 @@ const ManageSettings = () => {
         err.response?.data?.message || 'Failed to process request. Please try again.'
       );
     } finally {
+      pwSubmittingRef.current = false;
+      setPwSubmitting(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (cooldown > 0 || pwSubmittingRef.current) return;
+
+    pwSubmittingRef.current = true;
+    setPwSubmitting(true);
+    setPwError('');
+    try {
+      const response = await axios.post('/api/auth/change-password/request-otp', {
+        currentPassword,
+      });
+
+      if (response.data.success) {
+        setCooldown(60);
+      }
+    } catch (err) {
+      console.error('Error resending OTP:', err);
+      setPwError(
+        err.response?.data?.message || 'Failed to resend verification code. Please try again.'
+      );
+    } finally {
+      pwSubmittingRef.current = false;
       setPwSubmitting(false);
     }
   };
@@ -450,8 +500,22 @@ const ManageSettings = () => {
           </div>
 
           {pwStep === 'verify' && (
-            <div className="space-y-1 bg-primary/5 p-4 rounded-2xl border border-primary/20 space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wide text-primary">Email Verification Code (OTP)</label>
+            <div className="space-y-2 bg-primary/5 p-4 rounded-2xl border border-primary/20">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold uppercase tracking-wide text-primary">Email Verification Code (OTP)</label>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={cooldown > 0 || pwSubmitting}
+                  className={`text-[10px] font-black uppercase tracking-wider ${
+                    cooldown > 0 || pwSubmitting
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-primary hover:text-secondary'
+                  }`}
+                >
+                  {cooldown > 0 ? `Resend Code in ${cooldown}s` : 'Resend Code'}
+                </button>
+              </div>
               <p className="text-[11px] text-gray-500 leading-relaxed">
                 An OTP has been sent to your registered email: <strong className="text-dark font-black">{maskedEmail}</strong>. Please check your inbox or spam folder.
               </p>
