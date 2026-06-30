@@ -115,8 +115,8 @@ const Checkout = () => {
     const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
     const pakPhoneRegex = /^03[0-9]{9}$/;
     if (!pakPhoneRegex.test(cleanPhone)) {
-      setPhoneError('Please enter a valid Pakistani mobile number starting with "03" (e.g. 03001234567).');
-      showToast('Invalid Pakistani mobile number.', 'error');
+      setPhoneError('Please enter a valid Pakistani WhatsApp number starting with "03" (e.g. 03001234567).');
+      showToast('Invalid WhatsApp number.', 'error');
       return;
     }
 
@@ -217,7 +217,7 @@ const Checkout = () => {
 
                 {/* Phone Number */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Delivery Contact Number</label>
+                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Delivery WhatsApp Number</label>
                   <div className="relative">
                     <input
                       type="tel"

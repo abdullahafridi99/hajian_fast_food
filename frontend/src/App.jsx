@@ -11,6 +11,7 @@ import { ToastProvider } from './context/ToastContext';
 
 // Components
 import LoginModal from './components/LoginModal';
+import WhatsAppButton from './components/WhatsAppButton';
 
 // Public Pages
 import Home from './pages/Home';
@@ -46,6 +47,7 @@ const PublicLayout = () => {
         <Outlet />
       </div>
       <Footer />
+      <WhatsAppButton />
     </div>
   );
 };

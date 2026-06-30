@@ -227,11 +227,11 @@ const LoginModal = () => {
 
                   {/* Phone Number */}
                   <div className="space-y-1">
-                    <label className="text-xs font-bold uppercase tracking-wide text-gray-500">Pakistani Mobile Number</label>
+                    <label className="text-xs font-bold uppercase tracking-wide text-gray-500">WhatsApp Mobile Number</label>
                     <div className="relative">
                       <input
                         type="tel"
-                        placeholder="e.g. 03001234567"
+                        placeholder="e.g. 03001234567 (WhatsApp)"
                         value={phoneNumber}
                         onChange={handlePhoneChange}
                         className="w-full pl-12 pr-4 py-3 bg-light border border-light-gray/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm focus:border-primary transition-all text-dark font-extrabold tracking-wide"
@@ -240,7 +240,7 @@ const LoginModal = () => {
                       <FiPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                     </div>
                     <span className="text-[10px] text-gray-400 font-semibold leading-relaxed block mt-1">
-                      Format: 11 digits starting with 03 (no spaces or symbols)
+                      Order placement details and updates will be sent to this WhatsApp number.
                     </span>
                   </div>
 
